@@ -63,7 +63,3 @@ else
 	echo "No builds at least $MAX_BUILDS days old to remove..." 
 	echo "There aren't more than $MAX_BUILDS. No builds to remove..."
 fi
-
-NUM_BUILDS=$(ls nightly | wc -l)
-if [ $NUM_BUILDS > $MAX_BUILDS ]; then
-	BUILDS_TO_REMOVE = $NUM_BUILDS - $MAX_BUILDS
