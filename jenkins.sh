@@ -2,6 +2,8 @@
 
 VERSION="9.9.9"
 BASE_DIR=$HOME
+FULL_HOSTNAME=$(hostname)
+HOSTNAME=(${FULL_HOSTNAME//./ }) && HOSTNAME=${HOSTNAME[0]}
 CONDA_DIR="$BASE_DIR/conda-root"
 MAX_BUILDS=10
 
@@ -10,7 +12,7 @@ source conda_setup
 
 
 # Initial setup
-[ ! -d "nightly" ] && mkdir nightly
+[ ! -d "${HOSTNAME}_nightly" ] && mkdir ${HOSTNAME}_nightly
 
 
 # Makes directories
@@ -42,30 +44,30 @@ sed -i "/source:/!b;n;c \ \ fn: $CONDA_DIR/downloads/anarel/{{ pkg }}-{{ version
 
 # Build it
 cd $BASE_DIR
-mkdir tmp_nightly
+mkdir tmp_${HOSTNAME}_nightly
 
 cd conda-root
 echo "Building..."
-conda-build --output-folder $BASE_DIR/tmp_nightly psana-conda-opt
+conda-build --output-folder $BASE_DIR/tmp_${HOSTNAME}_nightly psana-conda-opt
 
 
 # Extracting build
 cd $BASE_DIR
 DATE=`date +%Y%m%d%H`
-echo "Extracting build data to $BASE_DIR/nightly/$DATE"
-mkdir nightly/$DATE
-tar jxf tmp_nightly/linux-64/psana-conda-$VERSION-py27_2.tar.bz2 -C nightly/$DATE
+echo "Extracting build data to $BASE_DIR/${HOSTNAME}_nightly/$DATE"
+mkdir ${HOSTNAME}_nightly/$DATE
+tar jxf tmp_${HOSTNAME}_nightly/linux-64/psana-conda-$VERSION-py27_2.tar.bz2 -C ${HOSTNAME}_nightly/$DATE
 
 
 # Remove conda-bld extra directories
-echo "Removing conda-bld, conda-root and tmp_nightly directory from $BASE_DIR"
+echo "Removing conda-bld, conda-root and tmp_${HOSTNAME}_nightly directory from $BASE_DIR"
 conda build purge
-rm -rf conda-bld conda-root tmp_nightly
+rm -rf conda-bld conda-root tmp_${HOSTNAME}_nightly
 
 
 # Remove oldest build(s) if there's more than MAX_BUILDS builds
-NUM_BUILDS=$(ls nightly | wc -l)
-cd nightly
+NUM_BUILDS=$(ls ${HOSTNAME}_nightly | wc -l)
+cd ${HOSTNAME}_nightly
 
 if [ $NUM_BUILDS -gt $MAX_BUILDS ]; then
 	NUM_BUILDS_TO_REMOVE=$(($NUM_BUILDS - $MAX_BUILDS))
