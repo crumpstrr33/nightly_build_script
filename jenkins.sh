@@ -52,7 +52,6 @@ conda-build --output-folder $BASE_DIR/tmp_nightly psana-conda-opt
 # Extracting build
 cd $BASE_DIR
 DATE=`date +%Y%m%d%H`
-
 echo "Extracting build data to $BASE_DIR/nightly/$DATE"
 mkdir nightly/$DATE
 tar jxf tmp_nightly/linux-64/psana-conda-$VERSION-py27_2.tar.bz2 -C nightly/$DATE
