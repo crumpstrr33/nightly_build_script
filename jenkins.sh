@@ -9,6 +9,9 @@ HOSTNAME=(${FULL_HOSTNAME//./ }) && HOSTNAME=${HOSTNAME[0]}
 CONDA_DIR="$BASE_DIR/conda-root"
 MAX_BUILDS=10
 
+# Exit as failure if any errors so Jenkins sees it as a failure
+set -e
+
 cd $BASE_DIR
 source $conda_setup
 
