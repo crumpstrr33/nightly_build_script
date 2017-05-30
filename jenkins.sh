@@ -12,7 +12,8 @@ MAX_BUILDS=10
 cd $BASE_DIR
 source $conda_setup
 
-echo "$PREFIX Building on ${FULL_HOSTNAME}..."
+BUILDER=$(whoami)
+echo "$PREFIX Building on ${FULL_HOSTNAME} as ${BUILDER}..."
 
 # Initial setup
 [ ! -d "${HOSTNAME}_nightly" ] && mkdir ${HOSTNAME}_nightly
@@ -82,3 +83,5 @@ else
 	echo "$PREFIX There are less than $MAX_BUILDS builds..."
     echo "$PREFIX No builds to remove..."
 fi
+
+echo "$PREFIX Finished building for $FULL_HOSTNAME as $BUILDER..."
