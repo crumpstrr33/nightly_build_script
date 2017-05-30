@@ -18,9 +18,11 @@ source $conda_setup
 BUILDER=$(whoami)
 echo "$PREFIX Building on ${FULL_HOSTNAME} as ${BUILDER}..."
 
-# Initial setup
+# Initial setup, clean directory before using
 [ ! -d "${HOSTNAME}_nightly" ] && mkdir ${HOSTNAME}_nightly
-
+[ -d "tmp_${HOSTNAME}_nightly" ] && rm -rf tmp_${HOSTNAME}_nightly
+[ -d "conda-root" ] && rm -rf conda-root
+[ -d "conda-bld" ] && rm -rf conda-bld
 
 # Makes directories
 if [ ! -d "conda-root/downloads/anarel" ]; then
