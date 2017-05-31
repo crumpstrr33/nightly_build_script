@@ -3,7 +3,7 @@
 PREFIX="[JENKINS SCRIPT]:"
 conda_setup="/reg/g/psdm/bin/conda_setup"
 VERSION="9.9.9"
-BASE_DIR="/reg/g/psdm/sw/releases/test_nightly"
+BASE_DIR=$1
 FULL_HOSTNAME=$(hostname)
 HOSTNAME=(${FULL_HOSTNAME//./ }) && HOSTNAME=${HOSTNAME[0]}
 CONDA_DIR="$BASE_DIR/conda-root"
@@ -13,7 +13,7 @@ MAX_BUILDS=10
 set -e
 
 cd $BASE_DIR
-source $conda_setup
+source $conda_setup ""
 
 BUILDER=$(whoami)
 echo "$PREFIX Building on ${FULL_HOSTNAME} as ${BUILDER}..."
@@ -62,7 +62,7 @@ conda-build --output-folder $BASE_DIR/tmp_${HOSTNAME}_nightly psana-conda-opt
 
 # Extracting build
 cd $BASE_DIR
-DATE=`date +%Y%m%d%H`
+DATE=`date +%Y%m%d_hour%H`
 echo "$PREFIX Extracting build data to $BASE_DIR/${HOSTNAME}_nightly/$DATE"
 mkdir ${HOSTNAME}_nightly/$DATE
 tar jxf tmp_${HOSTNAME}_nightly/linux-64/psana-conda-$VERSION-py27_2.tar.bz2 -C ${HOSTNAME}_nightly/$DATE
