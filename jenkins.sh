@@ -25,10 +25,8 @@ echo "$PREFIX Building on ${FULL_HOSTNAME} as ${BUILDER}..."
 [ -d "conda-bld" ] && rm -rf conda-bld
 
 # Makes directories
-if [ ! -d "conda-root/downloads/anarel" ]; then
-	echo "$PREFIX Creating dirs..."
-	mkdir -p conda-root/downloads/anarel
-fi
+echo "$PREFIX Creating dirs..."
+mkdir -p conda-root/downloads/anarel
 
 
 # cd into directories
@@ -63,13 +61,13 @@ conda-build --output-folder $BASE_DIR/tmp_${HOSTNAME}_nightly psana-conda-opt
 # Extracting build
 cd $BASE_DIR
 DATE=`date +%Y%m%d_hour%H`
-echo "$PREFIX Extracting build data to $BASE_DIR/${HOSTNAME}_nightly/$DATE"
+echo "$PREFIX Extracting build data to $BASE_DIR/${HOSTNAME}_nightly/$DATE..."
 mkdir ${HOSTNAME}_nightly/$DATE
 tar jxf tmp_${HOSTNAME}_nightly/linux-64/psana-conda-$VERSION-py27_2.tar.bz2 -C ${HOSTNAME}_nightly/$DATE
 
 
 # Remove conda-bld extra directories
-echo "$PREFIX Removing conda-bld, conda-root and tmp_${HOSTNAME}_nightly directory from $BASE_DIR"
+echo "$PREFIX Removing conda-bld, conda-root and tmp_${HOSTNAME}_nightly directory from $BASE_DIR..."
 conda build purge
 rm -rf conda-bld conda-root tmp_${HOSTNAME}_nightly
 
