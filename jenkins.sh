@@ -1,11 +1,21 @@
 #!/bin/bash
 
+# Use names psbuild-rhel5/6/7
+FULL_HOSTNAME=$(hostname)
+HOSTNAME=(${FULL_HOSTNAME//./ }) && HOSTNAME=${HOSTNAME[0]}
+
+# Another way:
+# if [ $(grep -o '-' <<< $HOST1 | wc -l) -eq 2 ]; then
+# If extra tacked on (like -01/-02 on rhel7, remove it)
+if [ $(echo $HOSTNAME | tr -cd '-' | wc -c) -eq 2 ]; then
+	HOSTNAME=${HOSTNAME%-*}
+fi
+echo "$PREFIX Using name $HOSTNAME for $FULL_HOSTNAME..."
+
 PREFIX="[JENKINS SCRIPT]:"
 conda_setup="/reg/g/psdm/bin/conda_setup"
 VERSION="9.9.9"
 BASE_DIR=$1
-FULL_HOSTNAME=$(hostname)
-HOSTNAME=(${FULL_HOSTNAME//./ }) && HOSTNAME=${HOSTNAME[0]}
 CONDA_DIR="$BASE_DIR/conda-root"
 MAX_BUILDS=10
 
