@@ -79,7 +79,7 @@ if [ $UNZIP = true]; then
 else
 	echo "$PREFIX Moving .tar.bz2 file to $BASE_DIR/${HOSTNAME}_nightly/$DATE..."
 	mv tmp_${HOSTNAME}_nightly/linux-64/psana-conda-$VERSION-py27_2.tar.bz2 ${HOSTNAME}_nightly/$DATE
-
+fi
 
 # Remove conda-bld extra directories
 echo "$PREFIX Removing conda-bld, conda-root and tmp_${HOSTNAME}_nightly directory from $BASE_DIR..."
