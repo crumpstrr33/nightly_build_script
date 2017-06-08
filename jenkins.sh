@@ -12,6 +12,7 @@ if [ $(echo $HOSTNAME | tr -cd '-' | wc -c) -eq 2 ]; then
 fi
 echo "$PREFIX Using name $HOSTNAME for $FULL_HOSTNAME..."
 
+UNZIP=false
 PREFIX="[JENKINS SCRIPT]:"
 conda_setup="/reg/g/psdm/bin/conda_setup"
 VERSION="9.9.9"
@@ -68,12 +69,16 @@ echo "$PREFIX Building..."
 conda-build --output-folder $BASE_DIR/tmp_${HOSTNAME}_nightly psana-conda-opt
 
 
-# Extracting build
+# Extracting or moving build
 cd $BASE_DIR
 DATE=`date +%Y%m%d_hour%H`
-echo "$PREFIX Extracting build data to $BASE_DIR/${HOSTNAME}_nightly/$DATE..."
 mkdir ${HOSTNAME}_nightly/$DATE
-tar jxf tmp_${HOSTNAME}_nightly/linux-64/psana-conda-$VERSION-py27_2.tar.bz2 -C ${HOSTNAME}_nightly/$DATE
+if [ $UNZIP = true]; then
+	echo "$PREFIX Extracting build data to $BASE_DIR/${HOSTNAME}_nightly/$DATE..."
+	tar jxf tmp_${HOSTNAME}_nightly/linux-64/psana-conda-$VERSION-py27_2.tar.bz2 -C ${HOSTNAME}_nightly/$DATE
+else
+	echo "$PREFIX Moving .tar.bz2 file to $BASE_DIR/${HOSTNAME}_nightly/$DATE..."
+	mv tmp_${HOSTNAME}_nightly/linux-64/psana-conda-$VERSION-py27_2.tar.bz2 ${HOSTNAME}_nightly/$DATE
 
 
 # Remove conda-bld extra directories
