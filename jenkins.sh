@@ -73,12 +73,13 @@ conda-build --output-folder $BASE_DIR/tmp_${HOSTNAME}_nightly psana-conda-opt
 cd $BASE_DIR
 DATE=`date +%Y%m%d_hour%H`
 mkdir ${HOSTNAME}_nightly/$DATE
+BUILD_FILE=$(ls tmp_${HOSTNAME}_nightly/linux-64 | grep psana-conda-$VERSION)
 if [ $UNZIP = true]; then
 	echo "$PREFIX Extracting build data to $BASE_DIR/${HOSTNAME}_nightly/$DATE..."
-	tar jxf tmp_${HOSTNAME}_nightly/linux-64/psana-conda-$VERSION-py27_2.tar.bz2 -C ${HOSTNAME}_nightly/$DATE
+	tar jxf tmp_${HOSTNAME}_nightly/linux-64/$BUILD_FILE -C ${HOSTNAME}_nightly/$DATE
 else
 	echo "$PREFIX Moving .tar.bz2 file to $BASE_DIR/${HOSTNAME}_nightly/$DATE..."
-	mv tmp_${HOSTNAME}_nightly/linux-64/psana-conda-$VERSION-py27_2.tar.bz2 ${HOSTNAME}_nightly/$DATE
+	mv tmp_${HOSTNAME}_nightly/linux-64/$BUILD_FILE ${HOSTNAME}_nightly/$DATE
 fi
 
 # Remove conda-bld extra directories
