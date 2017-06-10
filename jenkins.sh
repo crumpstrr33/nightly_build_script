@@ -74,7 +74,7 @@ cd $BASE_DIR
 DATE=`date +%Y%m%d_hour%H`
 mkdir ${HOSTNAME}_nightly/$DATE
 BUILD_FILE=$(ls tmp_${HOSTNAME}_nightly/linux-64 | grep psana-conda-$VERSION)
-if [ $UNZIP = true]; then
+if [ $UNZIP = true ]; then
 	echo "$PREFIX Extracting build data to $BASE_DIR/${HOSTNAME}_nightly/$DATE..."
 	tar jxf tmp_${HOSTNAME}_nightly/linux-64/$BUILD_FILE -C ${HOSTNAME}_nightly/$DATE
 else
