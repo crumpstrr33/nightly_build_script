@@ -40,8 +40,8 @@ mkdir -p conda-root/downloads/anarel
 
 # Remove old tags and get new ones
 cd $CONDA_DIR
-echo "PREFIX Retrieving tags..."
-ana-rel-admin --force --cmd psana-conda-src --name $VERSION --basedir $CONDA_DIR --tagsfile /reg/g/psdm/sw/conda/manage/config/psana-conda-svn-pkgs
+echo "$PREFIX Retrieving tags..."
+ana-rel-admin --force --cmd psana-conda-src --name $VERSION --basedir $CONDA_DIR
 mv downloads/anarel/psana-conda-${VERSION}.tar.gz downloads/anarel/psana-conda-nightly-${VERSION}.tar.gz
 
 # Get recipes and edit meta.yaml
