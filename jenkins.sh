@@ -75,11 +75,11 @@ conda build purge
 
 
 # Before checking to remove, check to make sure nothing is weird
-cd $CHANNEL_DIR/linux-64
-NUM_TARS=$(ls | grep psana-conda-nightly | wc -l)
-
 cd $BASE_DIR
 NUM_ENVS=$(ls | grep ana-nightly | wc -l)
+
+cd $CHANNEL_DIR/linux-64
+NUM_TARS=$(ls | grep psana-conda-nightly | wc -l)
 
 if [ $NUM_TARS -ne $NUM_ENVS ]; then
 	echo "$PREFIX There are $NUM_TARS tarballs and $NUM_ENVS envs. They should be equal..."
@@ -89,6 +89,7 @@ fi
 
 
 # Remove oldest envs and tarballs if there's more than MAX_BUILDS of them
+cd $BASE_DIR
 if [ $NUM_ENVS -gt $MAX_BUILDS ]; then
 	NUM_ENVS_TO_REMOVE=$(($NUM_ENVS - $MAX_BUILDS))
 	ENVS_TO_REMOVE=$(ls -t | grep ana-nightly | tail -n $NUM_ENVS_TO_REMOVE)
@@ -101,6 +102,7 @@ else
 	echo "$PREFIX No envs to remove..."
 fi
 
+cd $CHANNEL_DIR/linux-64
 if [ $NUM_TARS -gt $MAX_BUILDS ]; then
 	NUM_TARS_TO_REMOVE=$(($NUM_TARS - $MAX_BUILDS))
 	TARS_TO_REMOVE=$(ls -t | grep psana-conda-nightly | tail -n $NUM_TARS_TO_REMOVE)
