@@ -17,7 +17,12 @@ conda_setup="/reg/g/psdm/bin/conda_setup"
 PREFIX="[JENKINS SCRIPT]:"
 BUILDER=$(whoami)
 HOSTNAME=$(hostname)
-VERSION="9.9.9"
+VERSION=${1-"9.9.9"}
+if [[ ! $VERSION =~ [0-9]+\.[0-9]+\.[0-9]+ ]]; then
+	echo "$PREFIX Invalid version number given: $VERSION"
+	echo "$PREFIX Must be of form d.d.d where d is at least 1 digit. Aborting..."
+	exit
+fi
 DATE=`date +%Y%m%d_hour%H`
 UNZIP=true
 MAX_BUILDS=5
