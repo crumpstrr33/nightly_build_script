@@ -1,5 +1,5 @@
 # LCLS Conda Nighly Build Script
-Now can do a little more than what the title suggests.
+&#10024; Now can do a little more than what the title suggests &#10024;
 
 It will build a conda environment for the LCLS psana package and will keep a circular buffer so that only the newest n environments are kept.
 
