@@ -16,6 +16,10 @@ if [ $RHEL_VER = UNKNOWN ]; then
 	exit
 fi
 
+BASE_DIR="/reg/g/psdm/sw/conda/inst/miniconda2-prod-rhel${RHEL_VER}/envs"
+CONDA_DIR="$BASE_DIR/conda-root"
+CHANNEL_DIR="/reg/g/psdm/sw/conda/channels/psana-rhel${RHEL_VER}"
+
 VERSION=${1-"9.9.9"}
 if [[ ! $VERSION =~ [0-9]+\.[0-9]+\.[0-9]+ ]]; then
 	echo "$PREFIX Invalid version number given: $VERSION"
@@ -27,32 +31,29 @@ if [ $VERSION == "9.9.9" ]; then
 	OFFICIAL=false
 	PREFIX="[JENKINS SCRIPT (NIGHTLY)]:"
 else
+	if [ ! -z $(ls | grep $VERSION) ]; then
+		echo "$PREFIX Version $VERSION already exists for the psana-conda build. Aborting..."
+		exit
+	fi
 	echo "$PREFIX Building an official release of version $VERSION..."
 	OFFICIAL=true
 	PREFIX="[JENKINS SCRIPT (OFFICIAL)]:"
 fi
 
-BASE_DIR="/reg/g/psdm/sw/conda/inst/miniconda2-prod-rhel${RHEL_VER}/envs"
-CONDA_DIR="$BASE_DIR/conda-root"
-CHANNEL_DIR="/reg/g/psdm/sw/conda/channels/psana-rhel${RHEL_VER}"
 
 
-# Exit as failure if any errors so Jenkins sees it as a failure
 set -e
 
 
-# Source conda and begin script
 source $conda_setup ""
 echo "$PREFIX Building on ${HOSTNAME} as ${BUILDER}..."
 
 
-# Initial setup, clean directory before using
 cd $BASE_DIR
 [ -d "conda-root" ] && rm -rf conda-root
 mkdir -p conda-root/downloads/anarel
 
 
-# Remove old tags and get new ones
 cd $CONDA_DIR
 echo "$PREFIX Retrieving tags..."
 ana-rel-admin --force --cmd psana-conda-src --name $VERSION --basedir $CONDA_DIR
@@ -61,7 +62,6 @@ if [ $OFFICIAL == "false" ]; then
 fi
 
 
-# Get recipes and edit meta.yaml
 echo "$PREFIX Retrieving recipe..."
 cp -r /reg/g/psdm/sw/conda/manage/recipes/psana/psana-conda-opt .
 
@@ -70,13 +70,14 @@ if [ $OFFICIAL == "false" ]; then
 	sed -i "s/{% set pkg =.*/{% set pkg = 'psana-conda-nightly' %}/" psana-conda-opt/meta.yaml
 else
 	cp "/reg/neh/home/jscott/jenkins_sh/ana-official-py2.yml" .
+	cp "/reg/neh/home/jscott/jenkins_sh/ana-official-py3.yml" .
 	sed -i "/^name:/ s/$/-${VERSION}/" ana-official-py2.yml
+	sed -i "/^name:/ s/$/-${VERSION}-py3/" ana-official-py3.yml
 fi
 sed -i "s/{% set version =.*/{% set version = '$VERSION' %}/" psana-conda-opt/meta.yaml
 sed -i "/source:/!b;n;c \ \ fn: $CONDA_DIR/downloads/anarel/{{ pkg }}-{{ version }}.tar.gz" psana-conda-opt/meta.yaml
 
 
-# Build it and put tarball in CHANNEL_DIR with right name, abort if more than one (or 0) files found to rename
 cd $CONDA_DIR
 echo "$PREFIX Building tarball into $CHANNEL_DIR..."
 conda-build --output-folder $CHANNEL_DIR psana-conda-opt
@@ -90,18 +91,16 @@ if [ $OFFICIAL == "false" ]; then
 else
 	TAR_NAME=$(ls psana-conda-${VERSION}*)
 	echo "$PREFIX Creating env for ${CHANNEL_DIR}/${TAR_NAME} in ${BASE_DIR}/ana-test-${VERSION}"
-	#conda env create -p ${BASE_DIR}/ana-TEST-IS-A-TEST-U-UNDERSTAND?-${VERSION} -f $CONDA_DIR/ana-official-py2.yml
-	conda env create -f $CONDA_DIR/ana-official-py2.yml
+	conda env create -q -f $CONDA_DIR/ana-official-py2.yml
+	conda env create -q -f $CONDA_DIR/ana-official-py3.yml
 fi
 
 
-# Remove conda-bld extra directories
 echo "$PREFIX Running conda build purge..."
 conda build purge
 cd $BASE_DIR
 rm -rf conda-root
 
-# Before checking to remove, check to make sure nothing is weird
 if [ $OFFICIAL == "false" ]; then
 	cd $BASE_DIR
 	NUM_ENVS=$(ls | grep ana-nightly | wc -l)
@@ -116,7 +115,6 @@ if [ $OFFICIAL == "false" ]; then
 	fi
 
 
-	# Remove oldest envs and tarballs if there's more than MAX_BUILDS of them
 	cd $BASE_DIR
 	if [ $NUM_ENVS -gt $MAX_BUILDS ]; then
 		NUM_ENVS_TO_REMOVE=$(($NUM_ENVS - $MAX_BUILDS))
