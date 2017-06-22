@@ -1,4 +1,4 @@
-name: ana-test-py3
+name: ana-test
 dependencies:
   - python=3.5
   - cudnn=5.1
