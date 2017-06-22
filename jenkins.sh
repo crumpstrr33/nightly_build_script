@@ -30,7 +30,6 @@ else
 	echo "$PREFIX Building an official release of version $VERSION..."
 	OFFICIAL=true
 	PREFIX="[JENKINS SCRIPT (OFFICIAL)]:"
-	OFFICIAL_YAML="/reg/neh/home/jscott/jenkins_sh/ana-official-py2.yml"
 fi
 
 BASE_DIR="/reg/g/psdm/sw/conda/inst/miniconda2-prod-rhel${RHEL_VER}/envs"
@@ -69,6 +68,9 @@ cp -r /reg/g/psdm/sw/conda/manage/recipes/psana/psana-conda-opt .
 echo "$PREFIX Editing meta.yaml..."
 if [ $OFFICIAL == "false" ]; then
 	sed -i "s/{% set pkg =.*/{% set pkg = 'psana-conda-nightly' %}/" psana-conda-opt/meta.yaml
+else
+	cp "/reg/neh/home/jscott/jenkins_sh/ana-official-py2.yml" .
+	sed -i "/^name:/ s/$/-${VERSION}/" ana-official-py2.yml
 fi
 sed -i "s/{% set version =.*/{% set version = '$VERSION' %}/" psana-conda-opt/meta.yaml
 sed -i "/source:/!b;n;c \ \ fn: $CONDA_DIR/downloads/anarel/{{ pkg }}-{{ version }}.tar.gz" psana-conda-opt/meta.yaml
@@ -87,15 +89,17 @@ if [ $OFFICIAL == "false" ]; then
 	conda create -y -p ${BASE_DIR}/ana-nightly-${DATE} -c file://${CHANNEL_DIR} psana-conda-nightly
 else
 	TAR_NAME=$(ls psana-conda-${VERSION}*)
-	echo "$PREFIX Creating env for ${CHANNEL_DIR}/${TAR_NAME} in ${BASE_DIR}/ana-THIS-IS-A-TEST-U-UNDERSTAND?-${VERSION}"
-	conda env create -p ${BASE_DIR}/ana-TEST-IS-A-TEST-U-UNDERSTAND?-${VERSION} -f $OFFICIAL_YAML
+	echo "$PREFIX Creating env for ${CHANNEL_DIR}/${TAR_NAME} in ${BASE_DIR}/ana-test-${VERSION}"
+	#conda env create -p ${BASE_DIR}/ana-TEST-IS-A-TEST-U-UNDERSTAND?-${VERSION} -f $CONDA_DIR/ana-official-py2.yml
+	conda env create -f $CONDA_DIR/ana-official-py2.yml
 fi
 
 
 # Remove conda-bld extra directories
 echo "$PREFIX Running conda build purge..."
 conda build purge
-
+cd $BASE_DIR
+rm -rf conda-root
 
 # Before checking to remove, check to make sure nothing is weird
 if [ $OFFICIAL == "false" ]; then
