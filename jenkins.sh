@@ -2,17 +2,19 @@
 #
 # Running this script builds either:
 #    1) A psana environment
-# or 2) If a version number is given, a complete
+#              or 
+#    2) If a version number is given, a complete
 #       ana environment for both python 2 and 3
 #
 # It will exit for the following reasons:
 # [(Official) means that it can only happen for offical builds
-#  and (Unofficial) means it can only happen for the nightly builds
+# and (Unofficial) means it can only happen for the nightly builds
 #   - It can't find the RHEL version number
 #   - (Official) The build version number is invalid
 #   - (Official) The build version number already exists
 #   - (Unofficial) The number of nightly tarballs does not equal
 #     the number of envs (they should be equal)
+#
 
 #############################################################################
 #---------------------------------VARIABLES---------------------------------#
@@ -46,28 +48,29 @@ VERSION=${1-"99.99.99"}
 # Of the form: d.d.d where d is 1 or more digits
 if [[ ! $VERSION =~ [0-9]+\.[0-9]+\.[0-9]+ ]]; then
 	echo "$PREFIX Invalid version number given: $VERSION"
-	echo "$PREFIX Must be of form d.d.d where d is at least 1 digit. Aborting..."
+	echo "$PREFIX Must be of form d.d.d where d is at least 1 digit..."
+	echo "$PREFIX Aborting..."
 	exit
 fi
 # Decides whether this is an official release or not
-if [ $VERSION == "9.9.9" ]; then
+if [ $VERSION == "99.99.99" ]; then
 	echo "$PREFIX Not building an official release..."
 	OFFICIAL=false
 	PREFIX="[JENKINS SCRIPT (NIGHTLY)]:"
 else
 	# If it is, make sure the version number doesn't already exist
 	if [ ! -z $(ls | grep $VERSION) ]; then
-		echo "$PREFIX Version $VERSION already exists for the psana-conda build. Aborting..."
+		echo "$PREFIX Version $VERSION already exists for the psana build..."
+		echo "$PREFIX Aborting..."
 		exit
 	fi
 	echo "$PREFIX Building an official release of version $VERSION..."
 	OFFICIAL=true
 	PREFIX="[JENKINS SCRIPT (OFFICIAL)]:"
 fi
-
-####################################################################################
-#---------------------------------END OF VARIABLES---------------------------------#
-####################################################################################
+##############################################################################
+#------------------------------END OF VARIABLES------------------------------#
+##############################################################################
 
 # Exit with an exit code if there is an error
 set -e
@@ -84,7 +87,8 @@ mkdir -p conda-root/downloads/anarel
 cd $CONDA_DIR
 echo "$PREFIX Retrieving tags..."
 ana-rel-admin --force --cmd psana-conda-src --name $VERSION --basedir $CONDA_DIR
-# Don't append "nightly" onto the tar file if it's official... cause it's official... not nightly
+# Don't append "nightly" onto the tar file if it's official...
+# cause it's official... not nightly
 if [ $OFFICIAL == "false" ]; then
 	mv downloads/anarel/psana-conda-${VERSION}.tar.gz downloads/anarel/psana-conda-nightly-${VERSION}.tar.gz
 fi
@@ -95,15 +99,21 @@ cp -r /reg/g/psdm/sw/conda/manage/recipes/psana/psana-conda-opt .
 
 # Make some changes to the conda build yaml file
 echo "$PREFIX Editing meta.yaml..."
-# Don't append "nightly" onto the package name if it's official... cause it's official... not nightly (deja vu?)
+# Don't append "nightly" onto the package name if it's official...
+# cause it's official... not nightly (deja vu?)
 if [ $OFFICIAL == "false" ]; then
 	sed -i "s/{% set pkg =.*/{% set pkg = 'psana-conda-nightly' %}/" psana-conda-opt/meta.yaml
 else
-	# Get the environment creating yaml files for the official release for both python 2 and 3
+	# Get the env yaml files for the official release for both python 2 and 3
 	cp "/reg/neh/home/jscott/jenkins_sh/ana-official-py2.yml" .
 	cp "/reg/neh/home/jscott/jenkins_sh/ana-official-py3.yml" .
 	sed -i "/^name:/ s/$/-${VERSION}/" ana-official-py2.yml
 	sed -i "/^name:/ s/$/-${VERSION}-py3/" ana-official-py3.yml
+
+	if [ ! $RHEL_VER == 7 ]; then
+		sed -i "/yaml-cpp\|tensorflow\|jupyterhub/d" ana-official-py2.yml
+		sed -i "/yaml-cpp\|tensorflow\|jupyterhub/d" ana-official-py3.yml
+	fi
 fi
 # Change version and source directory to what it should be
 sed -i "s/{% set version =.*/{% set version = '$VERSION' %}/" psana-conda-opt/meta.yaml
@@ -118,18 +128,20 @@ conda-build --output-folder $CHANNEL_DIR psana-conda-opt
 cd $CHANNEL_DIR/linux-64
 if [ $OFFICIAL == "false" ]; then
 	# Rename tarball cause nightly... duh.
-	TAR_NAME=$(ls psana-conda-nightly-${VERSION}*)
-	echo "$PREFIX Changing name from $TAR_NAME to psana-conda-nightly-${DATE}..."
-	mv $TAR_NAME psana-conda-nightly-${DATE}.tar.gz
+	TAR=$(ls psana-conda-nightly-${VERSION}*)
+	echo "$PREFIX Changing name from $TAR to psana-conda-nightly-${DATE}..."
+	mv $TAR psana-conda-nightly-${DATE}.tar.bz2
+	# Update the json file
+	conda index
 	# Create the environment from just the psana tarball
-	echo "$PREFIX Creating env for ${CHANNEL_DIR}/${TAR_NAME} in ${BASE_DIR}/ana-nightly-${DATE}"
-	conda create -y -p ${BASE_DIR}/ana-nightly-${DATE} -c file://${CHANNEL_DIR} psana-conda-nightly
+	echo "$PREFIX Creating env for ${CHANNEL_DIR}/${TAR} in ${BASE_DIR}/ana-nightly-${DATE}..."
+	conda create -y -p ${BASE_DIR}/ana-nightly-${DATE} psana-conda-nightly
 else
 	# Don't rename the tarball (also duh)
-	TAR_NAME=$(ls psana-conda-${VERSION}*)
+	TAR=$(ls psana-conda-${VERSION}*)
 	# Create the environments based on the yaml files (since it's everything, not just psana...
 	# also psana isn't on python3 and so on)
-	echo "$PREFIX Creating env for ${CHANNEL_DIR}/${TAR_NAME} in ${BASE_DIR}/ana-test-${VERSION}"
+	echo "$PREFIX Creating env for ${CHANNEL_DIR}/${TAR} in ${BASE_DIR}/ana-test-${VERSION}"
 	conda env create -q -f $CONDA_DIR/ana-official-py2.yml
 	conda env create -q -f $CONDA_DIR/ana-official-py3.yml
 fi
@@ -148,10 +160,11 @@ if [ $OFFICIAL == "false" ]; then
 	cd $CHANNEL_DIR/linux-64
 	NUM_TARS=$(ls | grep psana-conda-nightly | wc -l)
 
-	# First lets make sure there are an equal number of tarballs and environment since they
-	# should be isomorphic (yay math terms)
+	# First lets make sure there are an equal number of tarballs
+	# and environment since they should be isomorphic (yay math terms)
 	if [ $NUM_TARS -ne $NUM_ENVS ]; then
-		echo "$PREFIX There are $NUM_TARS tarballs and $NUM_ENVS envs. They should be equal..."
+		echo "$PREFIX There are $NUM_TARS tarballs and $NUM_ENVS envs..."
+		echo "$PREFIX They should be equal..."
 		echo "$PREFIX Something is wrong. Aborting..."
 		exit
 	fi
