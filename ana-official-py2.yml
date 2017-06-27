@@ -1,4 +1,4 @@
-name: ana-test
+name: ana
 dependencies:
   - python=2.7
   - cudnn=5.1
@@ -110,3 +110,4 @@ dependencies:
   - flask-socketio
   - subprocess32
   - opencv>=3
+  - psocake
