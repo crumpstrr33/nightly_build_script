@@ -7,12 +7,12 @@
 #       ana environment for both python 2 and 3
 #
 # It will exit for the following reasons:
-# [(Official) means that it can only happen for offical builds
-# and (Unofficial) means it can only happen for the nightly builds
+# [(Release) means that it can only happen for offical builds
+# and (Nightly) means it can only happen for the nightly builds
 #   - It can't find the RHEL version number
-#   - (Official) The build version number is invalid
-#   - (Official) The build version number already exists
-#   - (Unofficial) The number of nightly tarballs does not equal
+#   - (Release) The build version number is invalid
+#   - (Release) The build version number already exists
+#   - (Nightly) The number of nightly tarballs does not equal
 #     the number of envs (they should be equal)
 #
 
@@ -51,10 +51,10 @@ if [[ ! $VERSION =~ [0-9]+\.[0-9]+\.[0-9]+ ]]; then
 	echo "$PREFIX Aborting..."
 	exit 1
 fi
-# Decides whether this is an official release or not
+# Decides whether this is an  release or not
 if [ $VERSION == "99.99.99" ]; then
 	echo "$PREFIX Not building an official release..."
-	OFFICIAL=false
+	RELEASE=false
 	PREFIX="[JENKINS SCRIPT (NIGHTLY)]:"
 else
 	# If it is, make sure the version number doesn't already exist
@@ -65,15 +65,16 @@ else
 		exit 1
 	fi
 	echo "$PREFIX Building an official release of version $VERSION..."
-	OFFICIAL=true
-	PREFIX="[JENKINS SCRIPT (OFFICIAL)]:"
+	RELEASE=true
+	PREFIX="[JENKINS SCRIPT (RELEASE)]:"
 fi
 
 # Temp directory for building and such
-if [ $OFFICAL = "false" ]; then
+if [ $RELEASE = "false" ]; then
 	CONDA_DIR="$BASE_DIR/conda-nightly"
 else
 	CONDA_DIR="$BASE_DIR/conda-release"
+fi
 ##############################################################################
 #------------------------------END OF VARIABLES------------------------------#
 ##############################################################################
@@ -86,7 +87,7 @@ source $conda_setup ""
 
 # Remove old tmp directory and remake it
 cd $BASE_DIR
-if [ $OFFICIAL == "false" ]; then
+if [ $RELEASE == "false" ]; then
 	[ -d "conda-nightly" ] && rm -rf conda-nightly
 	mkdir -p conda-nightly/downloads/anarel
 else
@@ -98,9 +99,9 @@ fi
 cd $CONDA_DIR
 echo "$PREFIX Retrieving tags..."
 ana-rel-admin --force --cmd psana-conda-src --name $VERSION --basedir $CONDA_DIR
-# Don't append "nightly" onto the tar file if it's official...
-# cause it's official... not nightly
-if [ $OFFICIAL == "false" ]; then
+# Don't append "nightly" onto the tar file if it's a release...
+# cause it's a release... not nightly
+if [ $RELEASE == "false" ]; then
 	mv downloads/anarel/psana-conda-${VERSION}.tar.gz downloads/anarel/psana-conda-nightly-${VERSION}.tar.gz
 fi
 
@@ -108,51 +109,51 @@ fi
 echo "$PREFIX Retrieving recipe..."
 cp -r /reg/g/psdm/sw/conda/manage/recipes/psana/psana-conda-opt .
 
-# Make some changes to the conda build yaml file
+# Make some changes to the yaml files
 echo "$PREFIX Editing meta.yaml..."
-# Don't append "nightly" onto the package name if it's official...
-# cause it's official... not nightly (deja vu?)
-if [ $OFFICIAL == "false" ]; then
+# Get the yaml files for creating the envs
+cp "/reg/neh/home/jscott/jenkins_sh/ana-official-py2.yml" .
+cp "/reg/neh/home/jscott/jenkins_sh/ana-official-py3.yml" .
+# Change names
+if [ $RELEASE == "false" ]; then
 	sed -i "s/{% set pkg =.*/{% set pkg = 'psana-conda-nightly' %}/" psana-conda-opt/meta.yaml
+	sed -i "/^name:/ s/$/-nightly-${DATE}-py2/" ana-official-py2.yml
+	sed -i "/^name:/ s/$/-nightly-${DATE}-py3/" ana-official-py3.yml
 else
-	# Get the env yaml files for the official release for both python 2 and 3
-	cp "/reg/neh/home/jscott/jenkins_sh/ana-official-py2.yml" .
-	cp "/reg/neh/home/jscott/jenkins_sh/ana-official-py3.yml" .
 	sed -i "/^name:/ s/$/-${VERSION}/" ana-official-py2.yml
 	sed -i "/^name:/ s/$/-${VERSION}-py3/" ana-official-py3.yml
-
-	if [ ! $RHEL_VER == 7 ]; then
-		sed -i "/yaml-cpp\|tensorflow\|jupyterhub/d" ana-official-py2.yml
-		sed -i "/yaml-cpp\|tensorflow\|jupyterhub/d" ana-official-py3.yml
-	fi
+fi
+# These 3 packages are only on RHEL7, so remove them if this build isn't RHEL7
+if [ ! $RHEL_VER == 7 ]; then
+	sed -i "/yaml-cpp\|tensorflow\|jupyterhub/d" ana-official-py2.yml
+	sed -i "/yaml-cpp\|tensorflow\|jupyterhub/d" ana-official-py3.yml
 fi
 # Change version and source directory to what it should be
 sed -i "s/{% set version =.*/{% set version = '$VERSION' %}/" psana-conda-opt/meta.yaml
 sed -i "/source:/!b;n;c \ \ fn: $CONDA_DIR/downloads/anarel/{{ pkg }}-{{ version }}.tar.gz" psana-conda-opt/meta.yaml
 
 # Now build it
-cd $CONDA_DIR
 echo "$PREFIX Building tarball into $CHANNEL_DIR..."
 conda-build --output-folder $CHANNEL_DIR psana-conda-opt
 
 # It builds the tarball into $CHANNEL_DIR, now lets make the environment(s)
 cd $CHANNEL_DIR/linux-64
-if [ $OFFICIAL == "false" ]; then
+if [ $RELEASE == "false" ]; then
 	# Rename tarball cause nightly... duh.
 	TAR=$(ls psana-conda-nightly-${VERSION}*)
 	echo "$PREFIX Changing name from $TAR to psana-conda-nightly-${DATE}..."
 	mv $TAR psana-conda-nightly-${DATE}.tar.bz2
 	# Update the json file
 	conda index
-	# Create the environment from just the psana tarball
+	# Create the environments based on the yaml files
 	echo "$PREFIX Creating env for ${CHANNEL_DIR}/${TAR} in ${BASE_DIR}/ana-nightly-${DATE}..."
-	conda create -y -p ${BASE_DIR}/ana-nightly-${DATE} psana-conda-nightly
+	conda env create -q -f $CONDA_DIR/ana-official-py2.yml
+	conda env create -q -f $CONDA_DIR/ana-official-py3.yml
 else
 	# Don't rename the tarball (also duh)
 	TAR=$(ls psana-conda-${VERSION}*)
-	# Create the environments based on the yaml files (since it's everything, not just psana...
-	# also psana isn't on python3 and so on)
-	echo "$PREFIX Creating env for ${CHANNEL_DIR}/${TAR} in ${BASE_DIR}/ana-test-${VERSION}"
+	# Create the environments based on the yaml files
+	echo "$PREFIX Creating env for ${CHANNEL_DIR}/${TAR} in ${BASE_DIR}/ana-${VERSION}"
 	conda env create -q -f $CONDA_DIR/ana-official-py2.yml
 	conda env create -q -f $CONDA_DIR/ana-official-py3.yml
 fi
@@ -161,33 +162,41 @@ fi
 echo "$PREFIX Running conda build purge..."
 conda build purge
 cd $BASE_DIR
-if [ $OFFICIAL == "false" ]; then
+if [ $RELEASE == "false" ]; then
 	rm -rf conda-nightly
 else
 	rm -rf conda-release
 fi
 
 # If nightly check env/tarball count to maintain circular buffer of $MAX_BUILDS
-if [ $OFFICIAL == "false" ]; then
+if [ $RELEASE == "false" ]; then
 	cd $BASE_DIR
-	NUM_ENVS=$(ls | grep ana-nightly | wc -l)
+	NUM_ENVS_PY2=$(ls | grep ana-nightly | grep py2 | wc -l)
+	NUM_ENVS_PY3=$(ls | grep ana-nightly | grep py3 | wc -l)
+	NUM_ENVS=$((NUM_ENVS_PY2 + NUM_ENVS_PY3))
+	if [ $NUM_ENVS_PY2 -ne $NUM_ENVS_PY3 ]; then
+		echo "$PREFIX Number of nightly py2 builds ($NUM_ENVS_PY2) does not equal the number of nightly py3 builds ($NUM_ENVS_PY3)..."
+		echo "$PREFIX They should be equal..."
+		echo "$PREFIX Nothing will be deleted. Aborting..."
+		exit 1
+	fi
 
 	cd $CHANNEL_DIR/linux-64
 	NUM_TARS=$(ls | grep psana-conda-nightly | wc -l)
 
 	# First lets make sure there are an equal number of tarballs
 	# and environment since they should be isomorphic (yay math terms)
-	if [ $NUM_TARS -ne $NUM_ENVS ]; then
-		echo "$PREFIX There are $NUM_TARS tarballs and $NUM_ENVS envs..."
+	if [ $NUM_TARS -ne $((NUM_ENVS / 2)) ]; then
+		echo "$PREFIX There are $NUM_TARS tarballs and $((NUM_ENVS / 2)) py2/py3 envs..."
 		echo "$PREFIX They should be equal..."
-		echo "$PREFIX Something is wrong. Aborting..."
+		echo "$PREFIX Nothing will be deleted. Aborting..."
 		exit 1
 	fi
 
 	# If they are, determine which environment(s) to delete if there are any
 	cd $BASE_DIR
-	if [ $NUM_ENVS -gt $MAX_BUILDS ]; then
-		NUM_ENVS_TO_REMOVE=$(($NUM_ENVS - $MAX_BUILDS))
+	if [ $((NUM_ENVS / 2)) -gt $MAX_BUILDS ]; then
+		NUM_ENVS_TO_REMOVE=$(($NUM_ENVS - $MAX_BUILDS * 2))
 		ENVS_TO_REMOVE=$(ls -t | grep ana-nightly | tail -n $NUM_ENVS_TO_REMOVE)
 
 		echo "$PREFIX Removing $NUM_ENVS_TO_REMOVE env(s):"
