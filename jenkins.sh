@@ -34,12 +34,11 @@ cat /etc/redhat-release | grep -q "release 6" && RHEL_VER=6
 cat /etc/redhat-release | grep -q "release 5" && RHEL_VER=5
 if [ $RHEL_VER = UNKNOWN ]; then
 	echo "$PREFIX RHEL version could not be found. Aborting..."
-	exit
+	exit 1
 fi
 
 # Relevant directories
 BASE_DIR="/reg/g/psdm/sw/conda/inst/miniconda2-prod-rhel${RHEL_VER}/envs"
-CONDA_DIR="$BASE_DIR/conda-root"
 CHANNEL_DIR="/reg/g/psdm/sw/conda/channels/psana-rhel${RHEL_VER}"
 
 # Optionally accept a version number. Defaults to 99.99.99
@@ -50,7 +49,7 @@ if [[ ! $VERSION =~ [0-9]+\.[0-9]+\.[0-9]+ ]]; then
 	echo "$PREFIX Invalid version number given: $VERSION"
 	echo "$PREFIX Must be of form d.d.d where d is at least 1 digit..."
 	echo "$PREFIX Aborting..."
-	exit
+	exit 1
 fi
 # Decides whether this is an official release or not
 if [ $VERSION == "99.99.99" ]; then
@@ -59,15 +58,22 @@ if [ $VERSION == "99.99.99" ]; then
 	PREFIX="[JENKINS SCRIPT (NIGHTLY)]:"
 else
 	# If it is, make sure the version number doesn't already exist
+	cd $BASE_DIR
 	if [ ! -z $(ls | grep $VERSION) ]; then
 		echo "$PREFIX Version $VERSION already exists for the psana build..."
 		echo "$PREFIX Aborting..."
-		exit
+		exit 1
 	fi
 	echo "$PREFIX Building an official release of version $VERSION..."
 	OFFICIAL=true
 	PREFIX="[JENKINS SCRIPT (OFFICIAL)]:"
 fi
+
+# Temp directory for building and such
+if [ $OFFICAL = "false" ]; then
+	CONDA_DIR="$BASE_DIR/conda-nightly"
+else
+	CONDA_DIR="$BASE_DIR/conda-release"
 ##############################################################################
 #------------------------------END OF VARIABLES------------------------------#
 ##############################################################################
@@ -80,8 +86,13 @@ source $conda_setup ""
 
 # Remove old tmp directory and remake it
 cd $BASE_DIR
-[ -d "conda-root" ] && rm -rf conda-root
-mkdir -p conda-root/downloads/anarel
+if [ $OFFICIAL == "false" ]; then
+	[ -d "conda-nightly" ] && rm -rf conda-nightly
+	mkdir -p conda-nightly/downloads/anarel
+else
+	[ -d "conda-release" ] && rm -rf conda-release
+	mkdir -p conda-release/downloads/anarel
+fi
 
 # Get the tags for the packages to be installed
 cd $CONDA_DIR
@@ -150,7 +161,11 @@ fi
 echo "$PREFIX Running conda build purge..."
 conda build purge
 cd $BASE_DIR
-rm -rf conda-root
+if [ $OFFICIAL == "false" ]; then
+	rm -rf conda-nightly
+else
+	rm -rf conda-release
+fi
 
 # If nightly check env/tarball count to maintain circular buffer of $MAX_BUILDS
 if [ $OFFICIAL == "false" ]; then
@@ -166,7 +181,7 @@ if [ $OFFICIAL == "false" ]; then
 		echo "$PREFIX There are $NUM_TARS tarballs and $NUM_ENVS envs..."
 		echo "$PREFIX They should be equal..."
 		echo "$PREFIX Something is wrong. Aborting..."
-		exit
+		exit 1
 	fi
 
 	# If they are, determine which environment(s) to delete if there are any
